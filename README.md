@@ -88,13 +88,21 @@ sudo snap disconnect demo-java-snap:network
 demo-java-snap red https://example.com   # falla
 sudo snap connect demo-java-snap:network
 
-sudo journalctl -k | grep 'apparmor="DENIED"' | grep demo-java-snap | tail
+# Justo después de un acceso denegado (ver nota abajo):
+sudo journalctl -k --since "-1 min" | grep 'apparmor="DENIED"' | grep -v -E 'coredump_filter|cgroup|hugepages|if_inet6'
 ```
+
+> **Nota sobre el log de AppArmor.** La JVM genera rechazos "de ruido" al arrancar
+> (`/proc/<pid>/coredump_filter`, `/sys/fs/cgroup/...`, `/sys/kernel/mm/hugepages/`); son
+> inofensivos. Además el kernel limita la tasa de mensajes de auditoría (`kauditd_printk_skb:
+> N callbacks suppressed`), así que si hace muchos intentos seguidos algunos rechazos no
+> aparecen: haga un solo acceso y consulte el log enseguida. Al desconectar `network`, Java
+> falla con `BindException: Permission denied` (lo bloquea seccomp al crear el socket).
 
 ### Configuración y hooks
 
 ```bash
-snap get demo-java-snap
+sudo snap get -d demo-java-snap      # en snapd 2.78 requiere sudo
 sudo snap set demo-java-snap puerto=9090 mensaje="Hola ICC-331"
 curl http://localhost:9090/
 sudo snap set demo-java-snap puerto=80       # rechazado por el hook configure
