@@ -1,0 +1,12 @@
+.gradle/
+build/
+.idea/
+*.iml
+out/
+.vscode/
+
+# Artefactos de snapcraft
+*.snap
+parts/
+stage/
+prime/

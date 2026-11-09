@@ -1,0 +1,21 @@
+#!/bin/sh
+# Hook "configure": se ejecuta tras la instalación, en cada refresh y en cada
+# "snap set demo-java-snap clave=valor". Si sale con error, el cambio se rechaza.
+set -e
+
+PUERTO="$(snapctl get puerto)"
+
+case "$PUERTO" in
+    ''|*[!0-9]*)
+        echo "puerto debe ser numérico (recibido: '$PUERTO')" >&2
+        exit 1 ;;
+esac
+if [ "$PUERTO" -lt 1024 ] || [ "$PUERTO" -gt 65535 ]; then
+    echo "puerto debe estar entre 1024 y 65535 (recibido: $PUERTO)" >&2
+    exit 1
+fi
+
+# Si el servicio ya está corriendo, se reinicia para aplicar la nueva configuración.
+if snapctl services "$SNAP_INSTANCE_NAME.servidor" | grep -qw active; then
+    snapctl restart "$SNAP_INSTANCE_NAME.servidor"
+fi

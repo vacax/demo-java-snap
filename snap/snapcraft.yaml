@@ -1,0 +1,63 @@
+name: demo-java-snap
+base: core24                 # sistema de archivos raíz (Ubuntu 24.04) sobre el que corre el snap
+version: '1.0.0'
+summary: Aplicación Java de ejemplo empaquetada como snap (ICC-331, PUCMM)
+description: |
+  Demostración de empaquetado de una aplicación Java en formato Snap:
+  runtime Java propio generado con jlink, confinamiento estricto (AppArmor,
+  seccomp, cgroups), plugs, un servicio (daemon) y hooks de configuración.
+
+grade: devel                 # devel | stable  (stable solo puede publicarse en canales stable/candidate)
+confinement: strict          # strict | devmode | classic
+
+# El linter de librerías no entiende que la JVM carga sus .so dinámicamente.
+lint:
+  ignore:
+    - library
+
+platforms:
+  amd64:
+  arm64:
+
+apps:
+  # Comando de usuario: se invoca como "demo-java-snap"
+  demo-java-snap:
+    command: bin/demo-java-snap
+    plugs:
+      - home                 # acceso a archivos no ocultos del $HOME real
+      - network              # conexiones salientes
+
+  # Servicio: se invoca/gestiona como "demo-java-snap.servidor"
+  servidor:
+    command: bin/servidor
+    daemon: simple           # snapd genera la unidad systemd snap.demo-java-snap.servidor.service
+    restart-condition: on-failure
+    plugs:
+      - network-bind         # escuchar en un puerto
+
+parts:
+  # 1) Compila la aplicación y crea un runtime Java mínimo con jlink
+  aplicacion:
+    plugin: nil              # sin plugin: los pasos se escriben a mano en override-build
+    source: .
+    source-type: local
+    build-packages:
+      - openjdk-21-jdk-headless
+      - ca-certificates-java
+    override-build: |
+      ./gradlew --no-daemon --quiet shadowJar
+      install -D -m 0644 build/libs/demo-java-snap.jar "$CRAFT_PART_INSTALL/app/demo-java-snap.jar"
+
+      jlink --add-modules java.base,java.net.http,jdk.httpserver,jdk.crypto.ec \
+            --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
+            --output "$CRAFT_PART_INSTALL/runtime"
+
+      # En Ubuntu, cacerts es un enlace a /etc/ssl/certs/java/cacerts, que NO existe
+      # dentro del snap: se copia el archivo real para que funcione HTTPS.
+      rm -f "$CRAFT_PART_INSTALL/runtime/lib/security/cacerts"
+      cp -L /etc/ssl/certs/java/cacerts "$CRAFT_PART_INSTALL/runtime/lib/security/cacerts"
+
+  # 2) Scripts lanzadores (copiados tal cual desde snap/local)
+  lanzadores:
+    plugin: dump
+    source: snap/local

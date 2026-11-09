@@ -1,0 +1,6 @@
+#!/bin/sh
+# Lanzador del daemon: lee la configuración guardada con "snap set" y la pasa como variables.
+PUERTO="$(snapctl get puerto)"
+MENSAJE="$(snapctl get mensaje)"
+export PUERTO MENSAJE
+exec "$SNAP/bin/demo-java-snap" servidor

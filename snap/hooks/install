@@ -1,0 +1,6 @@
+#!/bin/sh
+# Hook "install": se ejecuta una sola vez, al instalar el snap.
+# Define los valores por defecto de la configuración.
+set -e
+snapctl set puerto=8085
+snapctl set mensaje="Hola Mundo desde un snap :-D"

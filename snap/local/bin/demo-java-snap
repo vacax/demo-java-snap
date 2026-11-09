@@ -1,0 +1,4 @@
+#!/bin/sh
+# Lanzador del comando: usa el runtime Java incluido en el snap ($SNAP es de solo lectura).
+# stdout.encoding: sin locale (servicios, journal) las tildes saldrían como "?".
+exec "$SNAP/runtime/bin/java" ${JAVA_OPTS:--Xmx128m} -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "$SNAP/app/demo-java-snap.jar" "$@"
